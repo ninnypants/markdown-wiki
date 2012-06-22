@@ -1,0 +1,4 @@
+RewriteEngine On
+RewriteBase /app/wiki
+
+RewriteRule . index.php [l]
