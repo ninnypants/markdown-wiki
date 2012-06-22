@@ -6,26 +6,29 @@ class MarkdownWiki {
 		'doc_dir'      => '/tmp/',
 		'default_page' => 'index',
 		'new_page_text' => 'Start editing your new page',
-		'markdown_ext' => array('markdown', 'md'),
+		'markdown_ext' => 'md',
 	);
 
 	// An instance of the Markdown parser
 	protected $parser;
 	protected $base_url;
 
-	public function __construct($config=false) {
+	// allowed actions
+	protected $actions = array();
+
+	public function __construct($config = false) {
 		$this->init_wiki();
 		if ($config) {
-			$this->set_config($config);
+			$this->config = array_merge($this->config, $config);
 		}
 	}
 
 	protected function init_wiki() {
-		$baseDir = dirname(__FILE__) . '/';
+		$base_dir = dirname(__FILE__) . '/';
 
 		// Including the markdown parser
-		//echo "BaseDir: {$baseDir}\n";
-		require_once $baseDir . 'markdown.php';
+		//echo "BaseDir: {$base_dir}\n";
+		require_once $base_dir . '/markdown.php';
 	}
 
 	public function wiki_link($link) {
@@ -50,16 +53,12 @@ class MarkdownWiki {
 		return file_exists($filename);
 	}
 
-	public function set_config($config) {
-		$this->config = array_merge($this->config, $config);
-	}
-
-	public function handle_request($request=false, $server=false) {
-		$action           = $this->parse_request($request, $server);
-		$action->model    = $this->get_model_data($action);
+	public function handle_request($request = false, $server = false) {
+		$action = $this->parse_request($request, $server);
+		$action->model = $this->get_model_data($action);
 
 		// If this is a new file, switch to edit mode
-		if ($action->model->updated==0 && $action->action=='display') {
+		if ($action->model->updated == 0 && $action->action == 'display') {
 			$action->action = 'edit';
 		}
 
@@ -192,22 +191,22 @@ class MarkdownWiki {
 	## Methods for parsing the incoming request
 	##
 
-	public function parse_request($request=false, $server=false) {
+	public function parse_request($request = false, $server = false) {
 		$action = (object) NULL;
 
-		if (!$request) { $request = $_REQUEST; }
-		if (!$server)  { $server  = $_SERVER;  }
+		if (!$request) { $this->request = $_REQUEST; }
+		if (!$server)  { $this->server  = $_SERVER;  }
 
-		//echo "Request: "; print_r($request);
-		//echo "Server : "; print_r($server);
+		//echo "Request: "; print_r($this->request);
+		//echo "Server : "; print_r($this->server);
 
-		$action->method = $this->get_method($request, $server);
-		$action->page   = $this->get_page($request, $server);
-		$action->action = $this->get_action($request, $server);
-		$action->base   = $this->get_base_url($request, $server);
+		$action->method = $this->server['REQUEST_METHOD'];
+		$action->page   = $this->get_page();
+		$action->action = $this->get_action();
+		$action->base   = $this->get_base_url($this->request, $this->server);
 
-		if ($action->method=='POST') {
-			$action->post = $this->get_post_details($request, $server);
+		if ($action->method == 'POST') {
+			$action->post = $this->get_post_details($this->request, $this->server);
 		}
 
 		// Take a copy of the action base for the wiki_link function
@@ -234,48 +233,40 @@ class MarkdownWiki {
 		return 0;
 	}
 
-	protected function get_method($request, $server) {
-		if (!empty($server['REQUEST_METHOD'])) {
-			return $server['REQUEST_METHOD'];
-		}
-		return 'UNKNOWN';
-	}
-
-	protected function get_page($request, $server) {
+	protected function get_page() {
 		$page = '';
 
+		$page = preg_replace('#^'.$this->config['base_path'].'#', '', $this->server['REQUEST_URI']);
+
+		$page = trim($page, '/');
+
 		// Determine the page name
-		if (!empty($server['PATH_INFO'])) {
-			//echo "Path info detected\n";
-			// If we are using PATH_INFO then that's the page name
-			$page = substr($server['PATH_INFO'], 1);
-
-		} elseif (!empty($request['id'])) {
-			$page = $request['id'];
-
+		if(empty($page)){
+			$page = $this->config['doc_dir'].'index.'.$this->config['markdown_ext'];
 		} else {
-			// TODO: Keep checking
-			//echo "WARN: Could not find a pagename\n";
-		}
 
-		// Check whether a default Page is being requested
-		if ($page=='' || preg_match('/\/$/', $page)) {
-			$page .= $this->config['default_page'];
+			$page = preg_replace('#'.implode('|', $this->actions).'/?$#', '', $page);
+			if(!file_exists($this->config['doc_dir'].$page)){
+				header('Location: '.$this->config['url'].$this->config['base_path'].'/'.$page.'/edit/');
+			}
+
+			$page = $this->config['doc_dir'].$page;
+
 		}
 
 		return $page;
 	}
 
-	protected function get_action($request, $server) {
-		if ($server['REQUEST_METHOD']=='POST') {
-			if (!empty($request['preview'])) {
+	protected function get_action() {
+		if ($this->server['REQUEST_METHOD'] == 'POST') {
+			if (!empty($this->request['preview'])) {
 				return 'preview';
-			} elseif (!empty($request['save'])) {
+			} elseif (!empty($this->request['save'])) {
 				return 'save';
 			}
-		} elseif (!empty($request['action'])) {
-			return $request['action'];
-		} elseif (!empty($server['PATH_INFO'])) {
+		} elseif (!empty($this->request['action'])) {
+			return $this->request['action'];
+		} elseif (!empty($this->server['PATH_INFO'])) {
 			return 'display';
 		}
 
@@ -284,42 +275,14 @@ class MarkdownWiki {
 		return 'UNKNOWN';
 	}
 
-	protected function get_base_url($request, $server) {
-		if (!empty($this->config['base_url'])) {
-			return $this->config['base_url'];
-		}
-		/**
-			PATH_INFO $_SERVER keys
-    [SERVER_NAME] => localhost
-    [DOCUMENT_ROOT] => /home/user/sites/default/htdocs
-    [SCRIPT_FILENAME] => /home/user/sites/default/htdocs/index-sample.php
-    [REQUEST_METHOD] => GET
-    [QUERY_STRING] =>
-    [REQUEST_URI] => /index-sample.php
-    [SCRIPT_NAME] => /index-sample.php
-    [PHP_SELF] => /index-sample.php
-		**/
-
-		$scriptName = $server['SCRIPT_NAME'];
-		$requestUrl = $server['REQUEST_URI'];
-		$phpSelf    = $server['PHP_SELF'];
-
-		if ($requestUrl==$scriptName) {
-			// PATH_INFO based
-		} elseif(strpos($requestUrl, $scriptName)===0) {
-			// Query string based
-		} else {
-			// Maybe mod_rewrite based?
-			// Perhaps we need a config entry here
-		}
-
-		return '/index-sample.php/'; // PATH-INFO base
+	protected function get_base_url() {
+			return $this->config['url'].$this->config['base_path'];
 	}
 
 	protected function get_post_details($request, $server) {
 		$post = (object) NULL;
-		$post->text    = stripslashes($request['text']);
-		$post->updated = $request['updated'];
+		$post->text    = stripslashes($this->request['text']);
+		$post->updated = $this->request['updated'];
 		return $post;
 	}
 
@@ -418,13 +381,3 @@ HTML;
 
 
 }
-
-
-if (!empty($_SERVER['REQUEST_URI'])) {
-	# Dealing with a web request
-	$wiki = new MarkdownWiki();
-	$wiki->handle_request();
-	//print_r($wiki);
-}
-
-?>
