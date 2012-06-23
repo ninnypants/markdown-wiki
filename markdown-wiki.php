@@ -14,7 +14,7 @@ class MarkdownWiki {
 	protected $base_url;
 
 	// allowed actions
-	protected $actions = array();
+	protected $actions = array('edit', 'preview', 'save');
 
 	public function __construct($config = false) {
 		$this->init_wiki();
@@ -55,7 +55,7 @@ class MarkdownWiki {
 
 	public function handle_request($request = false, $server = false) {
 		$action = $this->parse_request($request, $server);
-		$action->model = $this->get_model_data($action);
+		$action->model = $this->get_page_data($action);
 
 		// If this is a new file, switch to edit mode
 		if ($action->model->updated == 0 && $action->action == 'display') {
@@ -73,32 +73,25 @@ class MarkdownWiki {
 	##
 
 	public function do_action($action) {
-
 		switch($action->action) {
-			case 'UNKNOWN': # Default to display
-			case 'display':
-				$response = $this->do_display($action);
-				break;
 			case 'edit':
 				$response = $this->do_edit($action);
-				break;
+			break;
+
 			case 'preview':
 				$response = $this->do_preview($action);
-				break;
+			break;
+
 			case 'save':
 				$response = $this->do_save($action);
-				break;
+			break;
+
 			case 'history':
 			case 'admin':
 			case 'browse':
 			default:
-				$response = array(
-					'messages' => array(
-						"Action {$action->action} not implemented."
-					)
-				);
-				print_r($action);
-				break;
+				$response = $this->do_display($action);
+			break;
 		}
 
 		return $response;
@@ -110,7 +103,7 @@ class MarkdownWiki {
 			'content'  => $this->render_document($action),
 			'edit_form' => '',
 			'options'  => array(
-				'Edit' => "{$action->base}{$action->page}?action=edit&amp;id={$action->page}"
+				'Edit' => $this->get_base_url(str_replace($this->config['doc_dir'], '', $action->page).'/edit/'),
 			),
 			'related'  => ''
 		);
@@ -124,7 +117,7 @@ class MarkdownWiki {
 			'content'  => '',
 			'edit_form' => $this->render_edit_form($action),
 			'options'  => array(
-				'Cancel' => "{$action->base}{$action->page}"
+				'Cancel' => $this->get_base_url(str_replace($this->config['doc_dir'], '', $action->page)),
 			),
 			'related'  => ''
 		);
@@ -151,32 +144,32 @@ class MarkdownWiki {
 		if (empty($action->model)) {
 			// This is a new file
 			echo "INFO: Saving a new file\n";
-		} elseif ($action->model->updated==$action->post->updated) {
+		} elseif ($action->model->updated == $action->post->updated) {
 			// Check there isn't an editing conflict
 			$action->model->content = $action->post->text;
-			$this->set_model_data($action->model);
+			$this->set_page_data($action->model);
 		} else {
 			echo "WARN: Editing conflict!\n";
 		}
 
-		return $this->do_display($action);
+		header('Location: '.$this->get_base_url(str_replace($this->config['doc_dir'], '', $action->page)));
 	}
 
 	##
 	## Methods dealing with the model (plain old file system)
 	##
 
-	protected function get_model_data($action) {
+	protected function get_page_data($action) {
 		$data = (object) NULL;
 
-		$data->file    = $this->get_filename($action->page);
+		$data->file    = $this->format_page_name($action->page, true);
 		$data->content = $this->get_content($data->file);
 		$data->updated = $this->get_last_updated($data->file);
 
 		return $data;
 	}
 
-	protected function set_model_data($model) {
+	protected function set_page_data($model) {
 		$directory = dirname($model->file);
 		if (!file_exists($directory)) {
 			mkdir($directory, 0777, true);
@@ -203,7 +196,7 @@ class MarkdownWiki {
 		$action->method = $this->server['REQUEST_METHOD'];
 		$action->page   = $this->get_page();
 		$action->action = $this->get_action();
-		$action->base   = $this->get_base_url($this->request, $this->server);
+		$action->base   = $this->get_base_url();
 
 		if ($action->method == 'POST') {
 			$action->post = $this->get_post_details($this->request, $this->server);
@@ -215,12 +208,8 @@ class MarkdownWiki {
 		return $action;
 	}
 
-	protected function get_filename($page) {
-		return "{$this->config['doc_dir']}{$page}.{$this->config['markdown_ext']}";
-	}
-
 	protected function get_content($filename) {
-		if (file_exists($filename)) {
+		if (file_exists($filename)){
 			return file_get_contents($filename);
 		}
 		return $this->config['new_page_text'];
@@ -242,41 +231,30 @@ class MarkdownWiki {
 
 		// Determine the page name
 		if(empty($page)){
-			$page = $this->config['doc_dir'].'index.'.$this->config['markdown_ext'];
+			$page = $this->format_page_name('');
 		} else {
 
-			$page = preg_replace('#'.implode('|', $this->actions).'/?$#', '', $page);
-			if(!file_exists($this->config['doc_dir'].$page)){
-				header('Location: '.$this->config['url'].$this->config['base_path'].'/'.$page.'/edit/');
-			}
+			$page = rtrim(preg_replace('#'.implode('|', $this->actions).'/?$#', '', $page), '/');
 
-			$page = $this->config['doc_dir'].$page;
+			$page = $this->format_page_name($page);
 
 		}
-
+		if(!$this->page_exists($page)){
+			header('Location: '.$this->config['url'].$this->config['base_path'].'/'.$page.'/edit/');
+		}
 		return $page;
 	}
 
 	protected function get_action() {
-		if ($this->server['REQUEST_METHOD'] == 'POST') {
-			if (!empty($this->request['preview'])) {
-				return 'preview';
-			} elseif (!empty($this->request['save'])) {
-				return 'save';
-			}
-		} elseif (!empty($this->request['action'])) {
-			return $this->request['action'];
-		} elseif (!empty($this->server['PATH_INFO'])) {
-			return 'display';
-		}
 
-		// TODO: handle version history etc.
+		preg_match('#([^/]+)/?$#', $this->server['REQUEST_URI'], $matches);
+		$action = in_array($matches[1], $this->actions) ? $matches[1] : 'display';
 
-		return 'UNKNOWN';
+		return $action;
 	}
 
-	protected function get_base_url() {
-			return $this->config['url'].$this->config['base_path'];
+	protected function get_base_url($path = '') {
+			return $this->config['url'].$this->config['base_path'].$path;
 	}
 
 	protected function get_post_details($request, $server) {
@@ -363,7 +341,7 @@ PAGE;
 		}
 
 		return <<<HTML
-<form action="{$action->base}{$action->page}" method="post">
+<form action="{$this->get_base_url('/save/')}" method="post">
 	<fieldset>
 		<legend>Editing</legend>
 		<label for="text">Content:</label><br>
@@ -379,5 +357,28 @@ HTML;
 
 	}
 
+	private function page_exists($page){
+		$page = $this->format_page_name($page);
+
+		// if folder exists and markdown file doesn't page hasn't been created yet
+		if(file_exists($page) && !file_exists($page.'/index.md')){
+			return false;
+		}elseif(file_exists($page) && file_exists($page.'/index.md')){
+			return true;
+		}
+		return false;
+	}
+
+	private function format_page_name($page, $include_index = false){
+		if(strpos($page, $this->config['doc_dir']) === false){
+			$page = $this->config['doc_dir'].trim($page, '/');
+		}
+
+		if($include_index){
+			$page .= '/index.md';
+		}
+
+		return $page;
+	}
 
 }
