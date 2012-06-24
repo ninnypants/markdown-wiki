@@ -1,6 +1,39 @@
 PHP5 Markdown
 =============
+```javascript
+{
+    "name": "sparrowhawk",
+    "develop": {
+        "ftp": {
+            "url": ...,
+            "user": ...,
+            "pass": ...
+        }
+    },
+    "production": {}
+}
+```
+```php
+function _doCodeFences_callback($matches) {
+	$codeblock = $matches[3];
+	$language = $matches[2] ? $matches[2] : '';
 
+	$codeblock = $this->outdent($codeblock);
+	$codeblock = htmlspecialchars($codeblock, ENT_NOQUOTES);
+
+	# trim leading newlines and trailing newlines
+	$codeblock = preg_replace('/An+|n+z/', '', $codeblock);
+
+	$codeblock = "<pre><code data-language="$language">$codeblockn</code></pre>";
+	return "nn".$this->hashBlock($codeblock)."nn";
+}
+```
+```css
+#content{
+    background: #fff;
+    color: green;
+}
+```
 
 A simple wiki built around the standard PHP Markdown class.
 
@@ -39,7 +72,7 @@ Wish list:
 
 * REST-based API that deals with raw markdown
 * Figure out a better way of extending the base markdown class.
-
+* kittens
 
 Things to consider:
 -------------------
