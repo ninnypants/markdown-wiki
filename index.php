@@ -6,12 +6,12 @@ $app_root = dirname(__FILE__);
 // var_dump($app_root);
 $config = array(
 	# Directory to store the markdown pages
-	'doc_dir'      => $app_root . '/pages/',
+	'doc_dir'      => $app_root . '/pages',
 
 	# Default page name
 	'default_page' => 'index',
-    'url' => 'http://ninnypants.com',
-    'base_path' => '/app/wiki',
+    'url' => 'http://wiki.35thsouth.com',
+    'base_path' => '',
 
 );
 
