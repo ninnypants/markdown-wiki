@@ -239,8 +239,8 @@ class MarkdownWiki {
 			$page = $this->format_page_name($page);
 
 		}
-		if(!$this->page_exists($page)){
-			header('Location: '.$this->config['url'].$this->config['base_path'].'/'.$page.'/edit/');
+		if(!$this->page_exists($page) && !in_array($this->get_action(), $this->actions)){
+			header('Location: '.$this->get_base_url(str_replace($this->config['doc_dir'], '', $page).'/edit/'));
 		}
 		return $page;
 	}
@@ -248,7 +248,11 @@ class MarkdownWiki {
 	protected function get_action() {
 
 		preg_match('#([^/]+)/?$#', $this->server['REQUEST_URI'], $matches);
-		$action = in_array($matches[1], $this->actions) ? $matches[1] : 'display';
+		if(isset($matches[1])){
+			$action = in_array($matches[1], $this->actions) ? $matches[1] : 'display';
+		}else{
+			$action = 'display';
+		}
 
 		return $action;
 	}
@@ -291,6 +295,7 @@ HTML;
 <html lang="en-US">
 <head>
 	<title>{$response['title']}</title>
+	<link href="/theme/js/rainbow/github.css" rel="stylesheet">
 </head>
 <body>
 	<div id="page">
@@ -306,6 +311,11 @@ HTML;
 {$response['footer']}
 		</div>
 	</div>
+	<script type="text/javascript" src="/theme/js/rainbow/rainbow.min.js"></script>
+	<script type="text/javascript" src="/theme/js/rainbow/language/php.js"></script>
+	<script type="text/javascript" src="/theme/js/rainbow/language/css.js"></script>
+	<script type="text/javascript" src="/theme/js/rainbow/language/javascript.js"></script>
+	<script type="text/javascript" src="/theme/js/rainbow/language/html.js"></script>
 </body>
 </html>
 PAGE;
@@ -371,13 +381,12 @@ HTML;
 
 	private function format_page_name($page, $include_index = false){
 		if(strpos($page, $this->config['doc_dir']) === false){
-			$page = $this->config['doc_dir'].trim($page, '/');
+			$page = $this->config['doc_dir'].'/'.trim($page, '/');
 		}
 
 		if($include_index){
 			$page .= '/index.md';
 		}
-
 		return $page;
 	}
 
