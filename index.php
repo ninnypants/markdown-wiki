@@ -17,12 +17,7 @@ $config = array(
 
 
 # And off we go...
-require_once $app_root . '/markdown-wiki.php';
-// var_dump($_SERVER['REQUEST_URI']);
-if (!empty($_SERVER['REQUEST_URI'])) {
-    # Dealing with a web request
-    $wiki = new MarkdownWiki($config);
-    $wiki->handle_request();
-    //print_r($wiki);
-}
-?>
+require_once $app_root.'/include/markdown.class.php';
+require_once $app_root . '/include/markdown-wiki.class.php';
+$wiki = new MarkdownWiki($config);
+$wiki->handle_request();
