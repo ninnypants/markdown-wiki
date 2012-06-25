@@ -15,17 +15,17 @@ PHP5 Markdown
 ```
 ```php
 function _doCodeFences_callback($matches) {
-	$codeblock = $matches[3];
-	$language = $matches[2] ? $matches[2] : '';
+    $codeblock = $matches[3];
+    $language = $matches[2] ? $matches[2] : '';
 
-	$codeblock = $this->outdent($codeblock);
-	$codeblock = htmlspecialchars($codeblock, ENT_NOQUOTES);
+    $codeblock = $this->outdent($codeblock);
+    $codeblock = htmlspecialchars($codeblock, ENT_NOQUOTES);
 
-	# trim leading newlines and trailing newlines
-	$codeblock = preg_replace('/An+|n+z/', '', $codeblock);
+    # trim leading newlines and trailing newlines
+    $codeblock = preg_replace('/An+|n+z/', '', $codeblock);
 
-	$codeblock = "<pre><code data-language="$language">$codeblockn</code></pre>";
-	return "nn".$this->hashBlock($codeblock)."nn";
+    $codeblock = "<pre><code data-language="$language">$codeblockn</code></pre>";
+    return "nn".$this->hashBlock($codeblock)."nn";
 }
 ```
 ```css
@@ -81,6 +81,5 @@ Things to consider:
 * Export/import markdown documents
 * sub-content / shared modules
 * Navigation items
-* Other text-format types ( textframe or textile )
 
 
