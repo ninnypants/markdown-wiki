@@ -2,6 +2,9 @@
 
 class Theme {
 
+	private $markdown = '';
+	private $file = null;
+
 	public function __construct(){
 
 	}
@@ -25,6 +28,10 @@ class Theme {
 	*/
 	public function the_content(){
 
+	}
+
+	public function the_raw_data(){
+		echo $this->markdown;
 	}
 
 	/*
@@ -60,6 +67,33 @@ class Theme {
 	*/
 	public function get_footer(){
 
+	}
+
+	/*
+	Output the login form
+	*/
+	public function login_form(){
+
+	}
+
+	/*
+	Output edit form
+	*/
+	public function edit_form(){
+		?>
+		<form action="<?php echo $this->get_base_url('/save/') ?>" method="post">
+			<fieldset>
+				<legend>Editing</legend>
+				<label for="text">Content:</label><br>
+				<textarea cols="78" rows="20" name="text" id="text"><?php echo $this->file->data; ?></textarea>
+				<br>
+
+				<input type="submit" name="preview" value="Preview">
+				<input type="submit" name="save" value="Save">
+				<input type="hidden" name="updated" value="<?php echo $this->file->time; ?>">
+			</fieldset>
+		</form>
+		<?php
 	}
 
 }

@@ -7,3 +7,7 @@ define('URL', 'http://wiki-url.com');
 define('ABSPATH', dirname(__FILE__));
 define('INC', ABSPATH.'/include');
 define('DOC', ABSPATH.'/pages');
+
+
+// theme
+define('THEME', 'default');
