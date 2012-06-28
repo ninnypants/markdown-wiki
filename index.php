@@ -10,14 +10,14 @@ $config = array(
 
 	# Default page name
 	'default_page' => 'index',
-    'url' => 'http://wiki.35thsouth.com',
-    'base_path' => '',
+    'url' => 'http://ninnypants.com',
+    'base_path' => '/app/wiki',
 
 );
 
 
 # And off we go...
-require_once $app_root.'/include/markdown.class.php';
-require_once $app_root . '/include/markdown-wiki.class.php';
+require_once $app_root.'/markdown.php';
+require_once $app_root . '/markdown-wiki.php';
 $wiki = new MarkdownWiki($config);
 $wiki->handle_request();

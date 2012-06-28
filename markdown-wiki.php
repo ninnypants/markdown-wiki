@@ -295,7 +295,7 @@ HTML;
 <html lang="en-US">
 <head>
 	<title>{$response['title']}</title>
-	<link href="/theme/js/rainbow/github.css" rel="stylesheet">
+	<link href="theme/js/rainbow/github.css" rel="stylesheet">
 </head>
 <body>
 	<div id="page">
@@ -311,11 +311,11 @@ HTML;
 {$response['footer']}
 		</div>
 	</div>
-	<script type="text/javascript" src="/theme/js/rainbow/rainbow.min.js"></script>
-	<script type="text/javascript" src="/theme/js/rainbow/language/php.js"></script>
-	<script type="text/javascript" src="/theme/js/rainbow/language/css.js"></script>
-	<script type="text/javascript" src="/theme/js/rainbow/language/javascript.js"></script>
-	<script type="text/javascript" src="/theme/js/rainbow/language/html.js"></script>
+	<script type="text/javascript" src="theme/js/rainbow/rainbow.min.js"></script>
+	<script type="text/javascript" src="theme/js/rainbow/language/php.js"></script>
+	<script type="text/javascript" src="theme/js/rainbow/language/css.js"></script>
+	<script type="text/javascript" src="theme/js/rainbow/language/javascript.js"></script>
+	<script type="text/javascript" src="theme/js/rainbow/language/html.js"></script>
 </body>
 </html>
 PAGE;
