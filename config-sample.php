@@ -10,4 +10,11 @@ define('DOC', ABSPATH.'/pages');
 
 
 // theme
-define('THEME', 'default');
+define('THEME', ABSPATH.'/theme/default');
+
+/*
+Visibility
+private = must be logged in to view content
+public = content is visible to everyone, must be logged in to edit
+*/
+define('VISIBILITY', 'public');
