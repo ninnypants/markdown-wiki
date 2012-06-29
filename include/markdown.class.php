@@ -982,15 +982,15 @@ class Markdown_Parser {
 	#
 	#	Process Markdown `<pre><code>` blocks.
 	#
-	$text = preg_replace_callback('{
+	$text = preg_replace_callback('#
 		(
 			`{3}(\S+)
 			(
-				([^\n]*\n+)+?
+				(.*\n+)+?
 			)
 			`{3}
 		)
-		}xm',
+		#xm',
 		array(&$this, '_doCodeFences_callback'), $text);
 	return $text;
 	}
@@ -999,7 +999,6 @@ class Markdown_Parser {
 		$codeblock = $matches[3];
 		$language = $matches[2] ? $matches[2] : '';
 
-		$codeblock = $this->outdent($codeblock);
 		$codeblock = htmlspecialchars($codeblock, ENT_NOQUOTES);
 
 		# trim leading newlines and trailing newlines
