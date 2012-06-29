@@ -27,8 +27,8 @@ class File {
 		if($data !== false)
 			$this->data = $data;
 
-		if(!file_exists($file))
-			mkdir(dirname($file), 775, true);
+		if(!file_exists($this->file))
+			mkdir(dirname($this->file), 775, true);
 
 		file_put_contents($this->file, $this->data);
 		$this->time = filectime($this->file);
