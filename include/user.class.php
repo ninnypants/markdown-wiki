@@ -40,7 +40,10 @@ class User{
 			$hash = md5($hash);
 		}
 		$cookie .= $hash;
-		setcookie('md-wiki-auth-cookie', $cookie);
+		$path = parse_url(URL, PHP_URL_PATH);
+		$path = $path ? $path : '/';
+		$host = parse_url(URL, PHP_URL_HOST);
+		setcookie('md-wiki-auth-cookie', $cookie, 0, $path, $host);
 	}
 
 	public function check_user_cookie(){
@@ -48,7 +51,6 @@ class User{
 
 		if(!isset($_COOKIE['md-wiki-auth-cookie']))
 			return;
-
 		$cookie = explode(':', $_COOKIE['md-wiki-auth-cookie']);
 		$hash = $users[$cookie[0]];
 
