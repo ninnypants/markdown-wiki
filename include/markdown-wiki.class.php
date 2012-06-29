@@ -1,61 +1,26 @@
 <?php
 
 class MarkdownWiki {
-	// Wiki default configuration. All overridableindex
-	protected $config = array(
-		'doc_dir'      => '/tmp/',
-		'default_page' => 'index',
-		'new_page_text' => 'Start editing your new page',
-		'markdown_ext' => 'md',
-	);
 
 	// An instance of the Markdown parser
 	protected $parser;
 	protected $base_url;
+	private $file;
 
 	// allowed actions
-	protected $actions = array('edit', 'preview', 'save');
+	protected $actions = array('edit', 'preview', 'save', 'login', 'logout');
 
-	public function __construct($config = false) {
-		$this->init_wiki();
-		if ($config) {
-			$this->config = array_merge($this->config, $config);
-		}
-	}
+	public function __construct() {
 
-	protected function init_wiki() {
-
-	}
-
-	public function wiki_link($link) {
-		global $docIndex;
-
-		$is_new = false;
-		$wiki_url = $link;
-
-		if (preg_match('/^\/?([a-z0-9-]+(\/[a-z0-9-]+)*)$/i', $link, $matches)) {
-			$wiki_url = "{$this->base_url}{$matches[1]}";
-			$is_new = !$this->is_markdown_file($link);
-		} elseif ($link=='/') {
-			$wiki_url = "{$this->base_url}{$this->config['default_page']}";
-			$is_new = !$this->is_markdown_file($this->config['default_page']);
-		}
-
-		return array($is_new, $wiki_url);
 	}
 
 	public function handle_request($request = false, $server = false) {
+		global $theme;
 		$action = $this->parse_request($request, $server);
-		$action->model = $this->get_page_data($action);
-
-		// If this is a new file, switch to edit mode
-		if ($action->model->updated == 0 && $action->action == 'display') {
-			$action->action = 'edit';
-		}
 
 		$action->response = $this->do_action($action);
-		$output = $this->render_response($action->response);
 
+		$theme->get_template();
 		//echo '<pre>'; print_r($action); echo '</pre>';
 	}
 
@@ -65,13 +30,10 @@ class MarkdownWiki {
 
 	public function do_action($action) {
 		switch($action->action) {
-			case 'edit':
-				$response = $this->do_edit($action);
-			break;
 
-			case 'preview':
-				$response = $this->do_preview($action);
-			break;
+			// case 'preview':
+			// 	$response = $this->do_preview($action);
+			// break;
 
 			case 'save':
 				$response = $this->do_save($action);
@@ -89,31 +51,29 @@ class MarkdownWiki {
 	}
 
 	protected function do_display($action) {
-		$response = array(
-			'title'    => "Displaying: {$action->page}",
-			'content'  => $this->render_document($action),
-			'edit_form' => '',
-			'options'  => array(
-				'Edit' => $this->get_base_url(str_replace($this->config['doc_dir'], '', $action->page).'/edit/'),
-			),
-			'related'  => ''
-		);
-
-		return $response;
+		global $user;
+		// var_dump($user);
+		if(!$user->is_logged_in() && VISIBILITY == 'private' && $action->action != 'login'){
+			header('Location: '.get_login_url($action->page));
+			exit;
+		}elseif($user->is_logged_in() && $action->action == 'login'){
+			header('Location: '.get_base_url($action->page));
+			exit;
+		}
+		global $theme;
+		$theme->load_page($action);
 	}
 
 	protected function do_edit($action) {
-		$response = array(
-			'title'    => "Editing: {$action->page}",
-			'content'  => '',
-			'edit_form' => $this->render_edit_form($action),
-			'options'  => array(
-				'Cancel' => $this->get_base_url(str_replace($this->config['doc_dir'], '', $action->page)),
-			),
-			'related'  => ''
-		);
-
-		return $response;
+		global $user;
+		if(!$user->is_logged_in()){
+			if(VISIBILITY == 'private'){
+				header('Location: '.get_login_url($action->page));
+			}else{
+				header('Location: '.get_base_url($action->page));
+			}
+			exit;
+		}
 	}
 
 	protected function do_preview($action) {
@@ -131,55 +91,39 @@ class MarkdownWiki {
 	}
 
 	protected function do_save($action) {
-		// TODO: Implement some sort of versioning
-		if (empty($action->model)) {
-			// This is a new file
-			echo "INFO: Saving a new file\n";
-		} elseif ($action->model->updated == $action->post->updated) {
-			// Check there isn't an editing conflict
-			$action->model->content = $action->post->text;
-			$this->set_page_data($action->model);
-		} else {
-			echo "WARN: Editing conflict!\n";
+		global $user;
+
+		if(!$user->is_logged_in()){
+			if(VISIBILITY == 'private'){
+				header('Location: '.get_login_url($action->page));
+			}else{
+				header('Location: '.get_base_url($action->page));
+			}
+			exit;
 		}
 
-		header('Location: '.$this->get_base_url(str_replace($this->config['doc_dir'], '', $action->page)));
-	}
-
-	##
-	## Methods dealing with the model (plain old file system)
-	##
-
-	protected function get_page_data($action) {
-		$data = (object) NULL;
-
-		$data->file    = $this->format_page_name($action->page, true);
-		$data->content = $this->get_content($data->file);
-		$data->updated = $this->get_last_updated($data->file);
-
-		return $data;
-	}
-
-	protected function set_page_data($model) {
-		$directory = dirname($model->file);
-		if (!file_exists($directory)) {
-			mkdir($directory, 0777, true);
-		} elseif (!is_dir($directory)) {
-			echo "ERROR: Cannot create {$model->file}\n";
+		$this->file = new File($this->format_page_name($action->page, true));
+		if($_POST['updated'] == $this->file->time){
+			$this->file->save($_POST['text']);
+		}else{
+			header('Location: '.$this->get_base_url(str_replace(DOC, '', rtrim($action->page, '/')).'/edit/'));
+			exit;
 		}
 
-		file_put_contents($model->file, $model->content);
+		header('Location: '.$this->get_base_url(str_replace(DOC, '', $action->page)));
+		exit;
 	}
+
 
 	##
 	## Methods for parsing the incoming request
 	##
 
-	public function parse_request($request = false, $server = false) {
+	public function parse_request() {
 		$action = (object) NULL;
 
-		if (!$request) { $this->request = $_REQUEST; }
-		if (!$server)  { $this->server  = $_SERVER;  }
+		$this->request = $_REQUEST;
+		$this->server  = $_SERVER;
 
 		//echo "Request: "; print_r($this->request);
 		//echo "Server : "; print_r($this->server);
@@ -189,34 +133,16 @@ class MarkdownWiki {
 		$action->action = $this->get_action();
 		$action->base   = $this->get_base_url();
 
-		if ($action->method == 'POST') {
-			$action->post = $this->get_post_details($this->request, $this->server);
-		}
-
 		// Take a copy of the action base for the wiki_link function
 		$this->base_url = $action->base;
 
 		return $action;
 	}
 
-	protected function get_content($filename) {
-		if (file_exists($filename)){
-			return file_get_contents($filename);
-		}
-		return $this->config['new_page_text'];
-	}
-
-	protected function get_last_updated($filename) {
-		if (file_exists($filename)) {
-			return filectime($filename);
-		}
-		return 0;
-	}
-
 	protected function get_page() {
 		$page = '';
 
-		$page = preg_replace('#^'.$this->config['base_path'].'#', '', $this->server['REQUEST_URI']);
+		$page = preg_replace('#^'.parse_url(URL, PHP_URL_PATH).'#', '', $this->server['REQUEST_URI']);
 
 		$page = trim($page, '/');
 
@@ -231,8 +157,9 @@ class MarkdownWiki {
 
 		}
 		if(!$this->page_exists($page) && !in_array($this->get_action(), $this->actions)){
-			header('Location: '.$this->get_base_url(str_replace($this->config['doc_dir'], '', $page).'/edit/'));
+			header('Location: '.$this->get_base_url(str_replace(DOC, '', $page).'/edit/'));
 		}
+
 		return $page;
 	}
 
@@ -249,14 +176,7 @@ class MarkdownWiki {
 	}
 
 	protected function get_base_url($path = '') {
-			return $this->config['url'].$this->config['base_path'].$path;
-	}
-
-	protected function get_post_details($request, $server) {
-		$post = (object) NULL;
-		$post->text    = stripslashes($this->request['text']);
-		$post->updated = $this->request['updated'];
-		return $post;
+		return URL.$path;
 	}
 
 	/*********
@@ -314,11 +234,11 @@ PAGE;
 		}
 	}
 
-	protected function render_document($action) {
-		return Markdown(
-			$action->model->content,
-			array($this, 'wiki_link')
-		);
+	protected function render_document($action){
+		if(!$this->file){
+			$this->file = new File($this->format_page_name($action->page, true));
+		}
+		return Markdown($this->file->data);
 	}
 
 	protected function render_preview_document($action) {
@@ -371,13 +291,16 @@ HTML;
 	}
 
 	private function format_page_name($page, $include_index = false){
-		if(strpos($page, $this->config['doc_dir']) === false){
-			$page = $this->config['doc_dir'].'/'.trim($page, '/');
+		if(empty($page)){
+			$page = DOC;
+		}elseif(strpos($page, DOC) === false){
+			$page = DOC.'/'.trim($page, '/');
 		}
 
 		if($include_index){
 			$page .= '/index.md';
 		}
+
 		return $page;
 	}
 
