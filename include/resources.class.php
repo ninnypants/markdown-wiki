@@ -13,19 +13,13 @@ class Resources {
 	private $enqueued_styles = array();
 
 	function __construct(){
-		// enqueue default scripts
-		$this->enqueue_script('jquery', '');
-		$this->enqueue_script('sort', '');
-		$this->enqueue_script('panic', '/resources/js/panic.js');
-		// enqueue default styles
-		$this->enqueue_style('normalize', '/resources/css/normalize.css');
-		$this->enqueue_style('panic', '/resources/css/panic.css');
+
 	}
 
 	/*
 	Register a script to be used with enqueue_script
 	*/
-	function register_script($name, $url, $footer = false){
+	function register_script($name, $url){
 		// check to see if the script exists
 		if(array_key_exists($name, $this->registered_scripts) || in_array($url, $this->registered_scripts)){
 			return false;
@@ -117,7 +111,7 @@ class Resources {
 	function enqueue_style($name, $url = false){
 
 		if(array_key_exists($name, $this->registered_styles)){
-			$this->enqueueed_styles[$name] = $this->registered_styles[$name];
+			$this->enqueued_styles[$name] = $this->registered_styles[$name];
 			return true;
 		}
 
