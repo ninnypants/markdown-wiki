@@ -984,7 +984,7 @@ class Markdown_Parser {
 	#
 	$text = preg_replace_callback('#
 		(
-			`{3}(\S+)
+			`{3}(\S+)?
 			(
 				(.*\n+)+?
 			)
