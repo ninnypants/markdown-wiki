@@ -23,6 +23,7 @@ class Theme {
 		$this->file = new File(format_page_name($action->page, true));
 		$this->markdown = Markdown($this->file->data);
 		$this->action = $action->action;
+		$this->page = $action->page;
 	}
 
 	/*
@@ -72,7 +73,28 @@ class Theme {
 	/*
 	Display page list
 	*/
-	public function list_pages(){
+	public function list_pages($root, $dir = ''){
+		$root = rtrim($root, '/').'/'.$dir;
+		$pages = array();
+		$ret = '';
+		if(rtrim($root, '/') == DOC){
+			$pages[] = '<li><a href="'.get_base_url().'">Home</a></li>';
+		}
+		$docs = array_diff(scandir($root), array('.', '..'));
+
+		foreach($docs as $doc){
+			if(is_dir($root.'/'.$doc)){
+				$subpages = '';
+				$subpages = $this->list_pages($root, $doc);
+				$pages[] = '<li><a href="'.get_base_url($root.'/'.$doc).'">'.$doc.'</a>'.$subpages.'</li>';
+			}
+		}
+
+		if(count($pages)){
+			$pages = implode("\n", $pages);
+			$ret = '<ul>'.$pages.'</ul>';
+		}
+		return $ret;
 
 	}
 
@@ -112,7 +134,7 @@ class Theme {
 	*/
 	public function edit_form(){
 		?>
-		<form action="<?php echo get_base_url('/save/') ?>" method="post">
+		<form action="<?php echo get_save_url($this->page) ?>" method="post">
 			<fieldset>
 				<legend>Editing</legend>
 				<label for="text">Content:</label><br>

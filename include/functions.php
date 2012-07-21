@@ -14,12 +14,12 @@ function the_title(){
 }
 
 function edit_link(){
-	echo '<a href="'.get_edit_url().'" class="edit">Edit</a>';
+	echo '<a href="'.get_edit_url(format_page_name($_SERVER['REQUEST_URI'])).'" class="edit">Edit</a>';
 }
 
 function list_pages(){
 	global $theme;
-	$theme->list_pages();
+	echo $theme->list_pages(DOC);
 }
 
 ##
